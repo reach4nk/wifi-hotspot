@@ -79,7 +79,7 @@ class InterfaceManager:
             check=False,
         )
         for line in result.stdout.split("\n"):
-            if line.lower().startswith("type"):
+            if "type" in line.lower():
                 parts = line.split()
                 if len(parts) >= 2:
                     mode_str = parts[1].capitalize()
