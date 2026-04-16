@@ -1,11 +1,7 @@
 #!/bin/bash
 set -e
-
-# Function to get the external Wi-Fi interface
-get_external_interface() {
-    external_interface=$(iwconfig 2>/dev/null | grep -B 1 'Mode:Master' | grep -o '^[^ ]*')
-    echo "$external_interface"
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 HOTSPOT_IF=$(get_external_interface)
 LEASE_FILE="/var/lib/misc/dnsmasq.leases"

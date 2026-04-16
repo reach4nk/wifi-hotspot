@@ -1,18 +1,7 @@
 #!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
-# Function to get the internal Wi-Fi interface
-get_internal_interface() {
-    internal_interface=$(iwconfig 2>/dev/null | grep -B 1 'Mode:Managed' | grep -o '^[^ ]*')
-    echo "$internal_interface"
-}
-
-# Function to get the external Wi-Fi interface
-get_external_interface() {
-    external_interface=$(iwconfig 2>/dev/null | grep -B 1 'Mode:Master' | grep -o '^[^ ]*')
-    echo "$external_interface"
-}
-
-# Get interfaces
 INTERNET_IF=$(get_internal_interface)
 HOTSPOT_IF=$(get_external_interface)
 
