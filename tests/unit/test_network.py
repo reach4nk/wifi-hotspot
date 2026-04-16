@@ -186,3 +186,56 @@ class TestNetworkManager:
             mock_run.return_value = MagicMock(returncode=1)
             result = NetworkManager.has_internet("wlan0")
             assert result is False
+
+    def test_setup_hotspot_interface_fail_add_address(self):
+        """Test setting up hotspot interface fails when adding address."""
+        with patch.object(InterfaceManager, "set_down") as mock_down, \
+             patch.object(InterfaceManager, "set_up") as mock_up:
+            mock_down.return_value = True
+            mock_up.return_value = True
+
+            with patch.object(NetworkManager, "flush_addresses") as mock_flush, \
+                 patch.object(NetworkManager, "add_address") as mock_add:
+                mock_flush.return_value = True
+                mock_add.return_value = False
+
+                with pytest.raises(Exception):
+                    NetworkManager.setup_hotspot_interface("wlan0", "192.168.50.1", 24)
+
+    def test_setup_hotspot_interface_fail_set_up(self):
+        """Test setting up hotspot interface fails when bringing up."""
+        with patch.object(InterfaceManager, "set_down") as mock_down, \
+             patch.object(InterfaceManager, "set_up") as mock_up:
+            mock_down.return_value = True
+            mock_up.return_value = False
+
+            with patch.object(NetworkManager, "flush_addresses") as mock_flush, \
+                 patch.object(NetworkManager, "add_address") as mock_add:
+                mock_flush.return_value = True
+                mock_add.return_value = True
+
+                with pytest.raises(Exception):
+                    NetworkManager.setup_hotspot_interface("wlan0", "192.168.50.1", 24)
+
+    def test_setup_ap_mode_failure(self):
+        """Test setting up AP mode fails."""
+        with patch.object(InterfaceManager, "get_mode") as mock_mode, \
+             patch.object(InterfaceManager, "set_down") as mock_down, \
+             patch("subprocess.run") as mock_run:
+            mock_mode.return_value = InterfaceMode.MANAGED
+            mock_down.return_value = True
+            mock_run.return_value = MagicMock(returncode=1)
+
+            with pytest.raises(Exception):
+                NetworkManager.setup_ap_mode("wlan0")
+
+    def test_get_default_gateway_complex(self):
+        """Test getting default gateway with complex output."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="default via 192.168.1.1 dev wlan0 proto dhcp src 192.168.1.100\n",
+                stderr=""
+            )
+            result = NetworkManager.get_default_gateway()
+            assert result == "192.168.1.1"

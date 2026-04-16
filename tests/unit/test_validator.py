@@ -119,3 +119,58 @@ class TestCredentialValidator:
         )
         assert valid is False
         assert "SSID" in error
+
+    def test_validate_credentials_invalid_encryption(self):
+        """Test credentials with invalid encryption."""
+        valid, error = CredentialValidator.validate_credentials(
+            encryption="invalid"
+        )
+        assert valid is False
+        assert "encryption" in error.lower()
+
+    def test_validate_credentials_wep_valid(self):
+        """Test valid WEP credentials."""
+        valid, error = CredentialValidator.validate_credentials(
+            ssid="TestNet",
+            password="a" * 26,
+            encryption="wep"
+        )
+        assert valid is True
+        assert error is None
+
+    def test_validate_credentials_wep_missing_password(self):
+        """Test WEP credentials missing password."""
+        valid, error = CredentialValidator.validate_credentials(
+            ssid="TestNet",
+            password="",
+            encryption="wep"
+        )
+        assert valid is False
+        assert "password" in error.lower()
+
+    def test_validate_credentials_wep_invalid_key(self):
+        """Test WEP credentials with invalid key."""
+        valid, error = CredentialValidator.validate_credentials(
+            ssid="TestNet",
+            password="invalid_key",
+            encryption="wep"
+        )
+        assert valid is False
+
+    def test_validate_credentials_invalid_ssid(self):
+        """Test credentials with invalid SSID."""
+        valid, error = CredentialValidator.validate_credentials(
+            ssid="A" * 33,
+            encryption="open"
+        )
+        assert valid is False
+        assert "SSID" in error
+
+    def test_validate_credentials_wpa_invalid_password(self):
+        """Test credentials with invalid WPA password."""
+        valid, error = CredentialValidator.validate_credentials(
+            ssid="TestNet",
+            password="short",
+            encryption="wpa2"
+        )
+        assert valid is False

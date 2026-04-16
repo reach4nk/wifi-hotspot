@@ -5,6 +5,7 @@ import pytest
 from hotspot.core.mac import (
     MACClass,
     MACClassifier,
+    MACAddress,
     is_valid_mac,
     is_randomized_mac,
     normalize_mac,
@@ -175,3 +176,28 @@ class TestMACClassifier:
         assert MACClassifier.classify("78:CA:39:BB:1B:E3") == MACClass.ACTUAL
         assert MACClassifier.classify("66:A3:92:39:49:11") == MACClass.LOCAL
         assert MACClassifier.classify("AA:50:F3:21:AC:30") == MACClass.LOCAL
+
+
+class TestMACAddress:
+    """Tests for MACAddress dataclass."""
+
+    def test_creation_auto_normalized(self):
+        """Test MACAddress auto-normalizes on creation."""
+        mac = MACAddress(address="aa:bb:cc:dd:ee:ff")
+        assert mac.normalized == "AA:BB:CC:DD:EE:FF"
+
+    def test_creation_with_normalized(self):
+        """Test MACAddress creation with pre-normalized address."""
+        mac = MACAddress(address="aa:bb:cc:dd:ee:ff", normalized="AA:BB:CC:DD:EE:FF")
+        assert mac.normalized == "AA:BB:CC:DD:EE:FF"
+
+    def test_str_repr(self):
+        """Test string representation of MACAddress."""
+        mac = MACAddress(address="aa:bb:cc:dd:ee:ff", mac_class=MACClass.ACTUAL)
+        assert str(mac) == "AA:BB:CC:DD:EE:FF"
+        assert "MACAddress" in repr(mac)
+
+    def test_creation_with_mac_class(self):
+        """Test MACAddress creation with mac_class."""
+        mac = MACAddress(address="aa:bb:cc:dd:ee:ff", mac_class=MACClass.LOCAL)
+        assert mac.mac_class == MACClass.LOCAL

@@ -160,3 +160,23 @@ class TestHostapdManager:
             manager = HostapdManager()
             result = manager.get_stations("wlan0")
             assert result == []
+
+    def test_get_stations_hostapd_cli_fails(self):
+        """Test getting stations when hostapd_cli fails."""
+        with patch("os.path.exists") as mock_exists, \
+             patch("subprocess.run") as mock_run:
+            mock_exists.return_value = True
+            mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error")
+            manager = HostapdManager()
+            result = manager.get_stations("wlan0")
+            assert result == []
+
+    def test_start_background_failure(self, tmp_path):
+        """Test starting hostapd in background fails."""
+        with patch.object(HostapdManager, "is_running", new_callable=lambda: property(lambda self: False)):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=1, stderr=b"Failed to start")
+                manager = HostapdManager(str(tmp_path / "hostapd.conf"))
+                manager.write_config("wlan0", "Test", "Pass123")
+                with pytest.raises(Exception):
+                    manager.start()

@@ -33,6 +33,41 @@ Examples:
   hotspot scan -o probes.json    Custom output file
 """
 
+    def _check_requirements(self) -> list[str]:
+        """Check for required tools.
+
+        Returns:
+            List of missing tools.
+        """
+        return ProbeScanner.check_requirements()
+
+    def _detect_interface(self) -> str | None:
+        """Auto-detect a suitable interface.
+
+        Returns:
+            Interface name or None.
+        """
+        return ProbeScanner.detect_interface()
+
+    def _create_scanner(
+        self,
+        interface: str,
+        duration: int | None,
+        output: str | None,
+        restore_managed: bool,
+    ) -> ProbeScanner:
+        """Create a probe scanner instance.
+
+        Returns:
+            ProbeScanner instance.
+        """
+        return ProbeScanner(
+            interface=interface,
+            duration=duration,
+            output=output,
+            restore_managed=restore_managed,
+        )
+
     def run(self, args) -> int:
         """Run the scan command.
 
@@ -44,7 +79,7 @@ Examples:
         """
         require_root()
 
-        missing = ProbeScanner.check_requirements()
+        missing = self._check_requirements()
         if missing:
             for tool in missing:
                 logger.error("Required tool not found: %s", tool)
@@ -54,7 +89,7 @@ Examples:
         interface = getattr(args, "interface", None)
         if not interface:
             logger.info("Auto-detecting interface...")
-            interface = ProbeScanner.detect_interface()
+            interface = self._detect_interface()
             if not interface:
                 logger.error("No monitor or master interface found")
                 return 1
@@ -65,12 +100,7 @@ Examples:
         output = getattr(args, "output", None)
         restore_managed = getattr(args, "cleanup", False)
 
-        scanner = ProbeScanner(
-            interface=interface,
-            duration=duration,
-            output=output,
-            restore_managed=restore_managed,
-        )
+        scanner = self._create_scanner(interface, duration, output, restore_managed)
 
         try:
             return scanner.run()

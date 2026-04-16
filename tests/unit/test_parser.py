@@ -94,6 +94,26 @@ B8:06:0D:BF:4D:DA,2026-04-16 17:56:41,2026-04-16 18:16:28,-85,158,62:0D:10:4D:E0
         result = CSVParser.parse_file(str(tmp_path / "nonexistent.csv"))
         assert result == []
 
+    def test_parse_station_line_empty(self):
+        """Test parsing empty line."""
+        result = CSVParser._parse_station_line("")
+        assert result is None
+
+    def test_parse_station_line_invalid_mac(self):
+        """Test parsing line with invalid MAC."""
+        result = CSVParser._parse_station_line("invalid,data,here")
+        assert result is None
+
+    def test_parse_station_line_no_ssids(self):
+        """Test parsing line with valid MAC but no SSIDs."""
+        result = CSVParser._parse_station_line("AA:BB:CC:DD:EE:FF")
+        assert result is None
+
+    def test_parse_station_line_with_empty_ssid(self):
+        """Test parsing line with empty SSID after MAC."""
+        result = CSVParser._parse_station_line("AA:BB:CC:DD:EE:FF,,,,,,,,")
+        assert result is None
+
     def test_parse_file_with_realistic_content(self, tmp_path):
         """Test parsing with realistic airodump-ng CSV format."""
         csv_content = """Station MAC, First time seen, Last time seen, Power, # packets, BSSID, Probed ESSIDs

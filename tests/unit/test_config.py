@@ -1,5 +1,8 @@
 """Unit tests for configuration utilities."""
 
+import json
+from unittest.mock import patch, MagicMock
+
 import pytest
 
 from hotspot.utils.config import (
@@ -7,6 +10,11 @@ from hotspot.utils.config import (
     DEFAULT_CHANNEL,
     DEFAULT_ENCRYPTION,
     DEFAULT_GATEWAY,
+    DEFAULT_DHCP_START,
+    DEFAULT_DHCP_END,
+    DEFAULT_DNS,
+    DEFAULT_WIFI_MODE,
+    DEFAULT_LEASE_TIME,
     load_config,
     get_default_config,
 )
@@ -122,6 +130,55 @@ class TestLoadConfig:
         config_file.write_text("invalid json {")
         config = load_config(str(config_file))
         assert isinstance(config, HotspotConfig)
+
+    def test_load_config_with_valid_data(self, tmp_path):
+        """Test loading valid JSON config."""
+        config_file = tmp_path / "config.json"
+        config_file.write_text('{"ssid": "TestNet", "channel": 11}')
+        config = load_config(str(config_file))
+        assert config.ssid == "TestNet"
+        assert config.channel == 11
+
+    def test_load_config_os_error(self, tmp_path):
+        """Test loading config when file can't be read."""
+        import os
+        config = load_config("/nonexistent/path.json")
+        assert isinstance(config, HotspotConfig)
+
+
+class TestHotspotConfigValidation:
+    """Additional validation tests."""
+
+    def test_validation_invalid_wifi_mode(self):
+        """Test validation with invalid wifi mode."""
+        config = HotspotConfig(
+            hotspot_iface="wlan0",
+            wifi_mode="x"
+        )
+        errors = config.validate()
+        assert any("mode" in e.lower() for e in errors)
+
+    def test_validation_password_too_long(self):
+        """Test validation with too long password."""
+        config = HotspotConfig(
+            hotspot_iface="wlan0",
+            password="p" * 64,
+            encryption="wpa2"
+        )
+        errors = config.validate()
+        assert any("long" in e.lower() for e in errors)
+
+    def test_to_dict_password_hidden(self):
+        """Test password is hidden in to_dict."""
+        config = HotspotConfig(password="secret")
+        result = config.to_dict()
+        assert result["password"] == "***"
+
+    def test_to_dict_empty_password(self):
+        """Test empty password in to_dict."""
+        config = HotspotConfig(password="")
+        result = config.to_dict()
+        assert result["password"] == ""
 
 
 class TestGetDefaultConfig:

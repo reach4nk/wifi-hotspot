@@ -95,6 +95,43 @@ class TestCredentialGenerator:
         with pytest.raises(ValueError):
             CredentialGenerator.generate(encryption="invalid")
 
+    def test_generate_wep_no_ssid(self):
+        """Test generate for WEP without SSID."""
+        creds = CredentialGenerator.generate(encryption="wep")
+        assert creds.encryption == "wep"
+        assert creds.ssid != ""
+        assert len(creds.password) == 26
+
+    def test_generate_wpa_no_password(self):
+        """Test generate for WPA without password."""
+        creds = CredentialGenerator.generate(encryption="wpa", ssid="TestNet")
+        assert creds.encryption == "wpa"
+        assert creds.ssid == "TestNet"
+        assert creds.password != ""
+
+    def test_generate_wpa2_no_password(self):
+        """Test generate for WPA2 without password."""
+        creds = CredentialGenerator.generate(encryption="wpa2")
+        assert creds.encryption == "wpa2"
+        assert creds.password != ""
+
+    def test_generate_open_no_ssid(self):
+        """Test generate for open network without SSID."""
+        creds = CredentialGenerator.generate(encryption="open")
+        assert creds.ssid != ""
+        assert creds.password == ""
+
+    def test_ssid_simple_format(self):
+        """Test ssid_simple generates correct format."""
+        result = CredentialGenerator.ssid_simple()
+        assert len(result) >= 6
+
+    def test_passphrase_default(self):
+        """Test passphrase with default word count."""
+        result = CredentialGenerator.passphrase()
+        words = result.split()
+        assert len(words) == 4  # 3 words + 1 number
+
 
 class TestCredentials:
     """Tests for Credentials dataclass."""

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -12,6 +14,7 @@ from hotspot.cli.base import (
     SubprocessCommand,
     create_parser,
     main,
+    require_root,
     require_tool,
     require_tools,
 )
@@ -47,6 +50,17 @@ class TestRequireFunctions:
         with patch("shutil.which", side_effect=which_side_effect):
             with pytest.raises(SystemExit):
                 require_tools("python3", "nonexistent")
+
+    def test_require_root_not_root(self):
+        """Test require_root exits when not root."""
+        with patch.object(os, "geteuid", return_value=1):
+            with pytest.raises(SystemExit):
+                require_root()
+
+    def test_require_root_is_root(self):
+        """Test require_root passes when root."""
+        with patch.object(os, "geteuid", return_value=0):
+            require_root()
 
 
 class TestCLICommand:
@@ -233,6 +247,47 @@ class TestMain:
         """Test main with teardown command."""
         with patch("sys.argv", ["hotspot", "teardown"]):
             with patch("hotspot.cli.teardown.TeardownCommand") as mock_cmd:
+                mock_instance = MagicMock()
+                mock_instance.run.return_value = 0
+                mock_cmd.return_value = mock_instance
+                result = main()
+                assert result == 0
+
+    def test_main_start(self):
+        """Test main with start command."""
+        with patch("sys.argv", ["hotspot", "start"]):
+            with patch("hotspot.cli.start.StartCommand") as mock_cmd:
+                mock_instance = MagicMock()
+                mock_instance.run.return_value = 0
+                mock_cmd.return_value = mock_instance
+                result = main()
+                assert result == 0
+                mock_instance.run.assert_called_once()
+
+    def test_main_stop(self):
+        """Test main with stop command."""
+        with patch("sys.argv", ["hotspot", "stop"]):
+            with patch("hotspot.cli.stop.StopCommand") as mock_cmd:
+                mock_instance = MagicMock()
+                mock_instance.run.return_value = 0
+                mock_cmd.return_value = mock_instance
+                result = main()
+                assert result == 0
+
+    def test_main_monitor(self):
+        """Test main with monitor command."""
+        with patch("sys.argv", ["hotspot", "monitor"]):
+            with patch("hotspot.cli.monitor.MonitorCommand") as mock_cmd:
+                mock_instance = MagicMock()
+                mock_instance.run.return_value = 0
+                mock_cmd.return_value = mock_instance
+                result = main()
+                assert result == 0
+
+    def test_main_scan(self):
+        """Test main with scan command."""
+        with patch("sys.argv", ["hotspot", "scan", "-d", "60"]):
+            with patch("hotspot.cli.scan.ScanCommand") as mock_cmd:
                 mock_instance = MagicMock()
                 mock_instance.run.return_value = 0
                 mock_cmd.return_value = mock_instance

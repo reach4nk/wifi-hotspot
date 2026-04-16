@@ -144,3 +144,60 @@ class TestHotspotService:
 
             assert len(clients["stations"]) == 1
             assert len(clients["dhcp_leases"]) == 1
+
+    def test_detect_interfaces_missing_internal(self):
+        """Test detecting interfaces when internal missing."""
+        with patch("hotspot.core.interface.InterfaceManager.get_external_interface") as mock_ext, \
+             patch("hotspot.core.interface.InterfaceManager.get_internal_interface") as mock_int:
+            mock_ext.return_value = "wlan1"
+            mock_int.return_value = ""
+
+            config = HotspotConfig()
+            service = HotspotService(config)
+
+            with pytest.raises(Exception) as exc_info:
+                service._detect_interfaces()
+            assert "No internet interface" in str(exc_info.value)
+
+    def test_setup_config_error(self):
+        """Test setup with config error."""
+        config = HotspotConfig()
+        service = HotspotService(config)
+
+        with pytest.raises(Exception) as exc_info:
+            service.setup()
+        assert "Invalid configuration" in str(exc_info.value)
+
+    def test_stop_is_running(self):
+        """Test stopping when services are running."""
+        with patch.object(HostapdManager, "is_running", new_callable=lambda: property(lambda self: True)), \
+             patch.object(DnsmasqManager, "is_running", new_callable=lambda: property(lambda self: True)), \
+             patch.object(HostapdManager, "stop") as mock_hostapd_stop, \
+             patch.object(DnsmasqManager, "stop") as mock_dnsmasq_stop, \
+             patch("hotspot.core.firewall.FirewallManager.teardown_hotspot_firewall") as mock_fw, \
+             patch("hotspot.core.firewall.FirewallManager.disable_ip_forwarding") as mock_ip, \
+             patch("hotspot.core.network.NetworkManager.teardown_hotspot_interface") as mock_net:
+            service = HotspotService()
+            service.config.hotspot_iface = "wlan0"
+            service.config.internet_iface = "wlan1"
+
+            service.stop()
+
+            mock_hostapd_stop.assert_called()
+            mock_dnsmasq_stop.assert_called()
+
+    def test_managed_context_manager(self):
+        """Test managed context manager."""
+        service = HotspotService()
+        service.config.hotspot_iface = "wlan0"
+        service.config.internet_iface = "wlan1"
+
+        with patch.object(service, "start") as mock_start, \
+             patch.object(service, "stop") as mock_stop:
+            mock_start.side_effect = Exception("Test")
+            try:
+                with service.managed():
+                    pass
+            except Exception:
+                pass
+            mock_stop.assert_called()

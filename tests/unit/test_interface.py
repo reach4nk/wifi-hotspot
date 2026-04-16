@@ -144,16 +144,16 @@ class TestInterfaceManager:
 
     def test_get_managed_interfaces(self):
         """Test getting managed interfaces."""
-        output = """wlp88s0  IEEE 802.11  ESSID:"Test"
+        output = """wlan0  IEEE 802.11  ESSID:"Test"
           Mode:Managed  Frequency:5.22 GHz"""
         with patch("hotspot.core.interface.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout=output)
             result = InterfaceManager.get_managed_interfaces()
-            assert "wlp88s0" in result
+            assert "wlan0" in result
 
     def test_get_managed_interfaces_none(self):
         """Test getting managed interfaces when none."""
-        output = """wlp88s0  IEEE 802.11  ESSID:"Test"
+        output = """wlan0  IEEE 802.11  ESSID:"Test"
           Mode:Master"""
         with patch("hotspot.core.interface.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout=output)
@@ -162,21 +162,21 @@ class TestInterfaceManager:
 
     def test_get_master_interfaces(self):
         """Test getting master interfaces."""
-        output = """wlxf4f26d1c2b2b  IEEE 802.11  ESSID:"Test"
+        output = """wlan1  IEEE 802.11  ESSID:"Test"
           Mode:Master"""
         with patch("hotspot.core.interface.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout=output)
             result = InterfaceManager.get_master_interfaces()
-            assert "wlxf4f26d1c2b2b" in result
+            assert "wlan1" in result
 
     def test_get_monitor_interfaces(self):
         """Test getting monitor interfaces."""
-        output = """wlxf4f26d1c2b2b  IEEE 802.11  ESSID:"Test"
+        output = """wlan1  IEEE 802.11  ESSID:"Test"
           Mode:Monitor"""
         with patch("hotspot.core.interface.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout=output)
             result = InterfaceManager.get_monitor_interfaces()
-            assert "wlxf4f26d1c2b2b" in result
+            assert "wlan1" in result
 
     def test_get_internal_interface(self):
         """Test getting internal interface."""
@@ -202,30 +202,47 @@ class TestInterfaceManager:
 
     def test_get_external_interface_monitor(self):
         """Test getting external interface in monitor mode."""
-        output = """wlxf4f26d1c2b2b  IEEE 802.11  Mode:Monitor"""
-        with patch("subprocess.run") as mock_run:
+        output = """wlan1  IEEE 802.11  Mode:Monitor"""
+        with patch("hotspot.core.interface.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout=output)
             result = InterfaceManager.get_external_interface()
-            assert result == "wlxf4f26d1c2b2b"
+            assert result == "wlan1"
 
     def test_get_external_interface_none(self):
         """Test getting external interface when none."""
-        output = """wlp88s0  IEEE 802.11  Mode:Managed"""
-        with patch("subprocess.run") as mock_run:
+        output = """wlan0  IEEE 802.11  Mode:Managed"""
+        with patch("hotspot.core.interface.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout=output)
             result = InterfaceManager.get_external_interface()
             assert result == ""
+
+    def test_get_external_interface_master(self):
+        """Test getting external interface in master mode."""
+        output = """wlan1  IEEE 802.11  Mode:Master"""
+        with patch("hotspot.core.interface.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout=output)
+            result = InterfaceManager.get_external_interface()
+            assert result == "wlan1"
+
+    def test_get_mode_unknown_type(self):
+        """Test getting unknown mode type."""
+        output = """Interface wlan0
+            type Unknown"""
+        with patch("hotspot.core.interface.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout=output)
+            result = InterfaceManager.get_mode("wlan0")
+            assert result == InterfaceMode.UNKNOWN
 
     def test_detect_interfaces(self):
         """Test detecting all interfaces."""
         with patch.object(InterfaceManager, "get_internal_interface") as mock_int:
             with patch.object(InterfaceManager, "get_external_interface") as mock_ext:
                 with patch.object(InterfaceManager, "get_all_wireless") as mock_all:
-                    mock_int.return_value = "wlp88s0"
-                    mock_ext.return_value = "wlxf4f26d1c2b2b"
-                    mock_all.return_value = ["wlp88s0", "wlxf4f26d1c2b2b"]
+                    mock_int.return_value = "wlan0"
+                    mock_ext.return_value = "wlan1"
+                    mock_all.return_value = ["wlan0", "wlan1"]
                     result = InterfaceManager.detect_interfaces()
-                    assert result == ("wlp88s0", "wlxf4f26d1c2b2b", ["wlp88s0", "wlxf4f26d1c2b2b"])
+                    assert result == ("wlan0", "wlan1", ["wlan0", "wlan1"])
 
     def test_wait_for_interface_found(self):
         """Test waiting for interface that exists."""
