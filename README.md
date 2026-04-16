@@ -10,6 +10,20 @@ A lightweight Bash-based WiFi access point solution for Linux. Create a software
   - **External interface**: Dedicated to hosting the hotspot (master mode)
 - Root/sudo privileges
 
+## Third-Party Dependencies
+
+This project relies on the following excellent open-source tools:
+
+| Tool | Description | License | Repository/Website |
+|------|-------------|---------|-------------------|
+| [hostapd](https://w1.fi/hostapd/) | IEEE 802.11 AP and authentication servers | BSD-3-Clause | [GitHub](https://w1.fi/hostapd/) |
+| [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/) | Lightweight DNS/DHCP server | GPL-2.0 | [GitHub](https://thekelleys.org.uk/dnsmasq/) |
+| [aircrack-ng](https://www.aircrack-ng.org/) | WiFi security auditing suite (airodump-ng) | GPL-2.0 | [GitHub](https://github.com/aircrack-ng/aircrack-ng) |
+| [iptables](https://www.netfilter.org/projects/iptables/) | Packet filtering and NAT | GPL-2.0 | [Website](https://www.netfilter.org/) |
+| [wireless-tools](https://hewlettpackard.github.io/wireless-tools/) | Linux WiFi configuration (iwconfig, iw) | GPL-2.0 | [GitHub](https://hewlettpackard.github.io/wireless-tools/) |
+
+These tools are installed automatically by `./setup.sh`.
+
 ## Quick Start
 
 ```bash
@@ -33,12 +47,18 @@ sudo ./stop.sh
 
 | Script | Description |
 |--------|-------------|
-| `common.sh` | Shared library with interface detection functions. |
+| `common.sh` | Shared library with interface detection, MAC utilities, process management. |
+| `skeleton.sh` | Base script template with logging, cleanup, and privilege checking. |
+| `credentials.sh` | Credential generation utilities (SSID, passwords, WEP keys). |
+| `network.sh` | Network interface configuration (monitor mode, hotspot setup). |
+| `firewall.sh` | iptables/NAT management utilities. |
+| `services.sh` | hostapd/dnsmasq lifecycle management. |
 | `setup.sh` | Installs hostapd, dnsmasq, and iptables. Stops services to prevent conflicts. |
 | `start.sh` | Starts the hotspot. Configurable via CLI arguments. |
 | `stop.sh` | Stops hostapd and dnsmasq, removes iptables rules, and cleans up network config. |
 | `monitor.sh` | Shows connected clients, DHCP leases, and ARP table. |
-| `scan.sh` | Scans for WiFi probe requests from devices. Captures SSIDs and client MACs. |
+| `scan.py` | **Scans for WiFi probe requests** (Python, real-time updates, JSON merging). |
+| `scan.sh` | **DEPRECATED** - Legacy bash version. Use `scan.py` instead. |
 | `find_interfaces.sh` | Displays detected WiFi interfaces (internal and external). |
 | `teardown.sh` | Removes all hotspot software packages. |
 
@@ -141,10 +161,15 @@ Displays:
 ### Scanning for Probe Requests
 
 ```bash
-./scan.sh [OPTIONS]
+python3 ./scan.py [OPTIONS]
 ```
 
-Captures WiFi probe requests from devices searching for networks. Useful for:
+Captures WiFi probe requests from devices searching for networks. Features:
+- **Real-time updates**: Updates `probes.json` as new MACs/SSIDs are discovered
+- **JSON merging**: Combines results with existing `probes.json` (MAC-based deduplication)
+- **Persistent results**: Each MAC accumulates all SSIDs it ever probed
+
+Useful for:
 - Discovering what networks devices are looking for
 - Creating a database of SSIDs for targeted hotspot attacks
 - Analyzing client WiFi behavior
@@ -162,21 +187,20 @@ Captures WiFi probe requests from devices searching for networks. Useful for:
 
 ```bash
 # Scan for 60 seconds
-./scan.sh -d 60
+python3 ./scan.py -d 60
 
 # Scan with custom output file
-./scan.sh -d 60 -o scan_results.json
+python3 ./scan.py -d 60 -o scan_results.json
 
 # Continuous scan (Ctrl+C to stop)
-./scan.sh
+python3 ./scan.py
 ```
 
 #### Output Format
 
 ```json
 {
-  "scan_time": "2026-04-16T10:58:33+01:00",
-  "interface": "wlan0mon",
+  "interface": "wlxf4f26d1c2b2b",
   "clients": [
     {
       "class": "actual",
@@ -195,7 +219,14 @@ Captures WiFi probe requests from devices searching for networks. Useful for:
 - `class: "actual"` - Real MAC address
 - `class: "local"` - Randomized MAC address (2nd char of 1st byte is 2, 6, A, or E)
 
-**Note:** The interface remains in monitor mode after scanning for use with start.sh. Use `--cleanup` to restore managed mode.
+**Note:** The interface remains in monitor mode after scanning for use with `start.sh`. Use `--cleanup` to restore managed mode.
+
+#### Deprecated: scan.sh
+
+The legacy `scan.sh` is deprecated. Use `scan.py` instead for:
+- Better real-time CSV monitoring
+- Proper JSON merging with deduplication
+- Cleaner Python-based parsing
 
 ### Stopping the Hotspot
 
@@ -273,9 +304,27 @@ Removes hostapd and dnsmasq packages and cleans up dependencies.
 
 ## How It Works
 
+### Hotspot (start.sh)
 1. **Interface Detection**: Uses `iwconfig` to identify WiFi interfaces by mode (Managed vs Master)
 2. **Network Setup**: Assigns static IP to the external interface (default: 192.168.50.1/24)
 3. **SSID/Password Generation**: Randomly generates memorable network credentials (or uses provided values)
 4. **DHCP Server**: dnsmasq assigns IPs to connected clients (configurable range)
 5. **NAT Routing**: iptables masquerades traffic from hotspot clients to the internet
 6. **Access Point**: hostapd broadcasts the WiFi network and handles authentication
+
+### Probe Scanning (scan.py)
+1. **Monitor Mode**: Puts interface in monitor mode to capture all WiFi frames
+2. **airodump-ng**: Captures probe request frames from nearby clients
+3. **Real-time Parsing**: Python monitors CSV output and updates JSON immediately
+4. **MAC Deduplication**: Merges results by MAC address, accumulating all probed SSIDs
+5. **Persistent Storage**: Results saved to `probes.json` and updated in real-time
+
+### Architecture
+
+The project uses a modular design with shared libraries:
+- `skeleton.sh`: Base template with logging, cleanup, privilege checking
+- `common.sh`: Core utilities (interface detection, MAC classification, process management)
+- `network.sh`: Interface configuration (monitor mode, hotspot setup)
+- `firewall.sh`: iptables/NAT management
+- `services.sh`: hostapd/dnsmasq lifecycle
+- `credentials.sh`: SSID/password generation and validation

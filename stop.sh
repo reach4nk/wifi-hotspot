@@ -4,45 +4,48 @@
 # stop.sh - Stop the WiFi hotspot
 # =============================================================================
 # Safely stops the hotspot by:
-#   1. Killing hostapd and dnsmasq processes
-#   2. Removing iptables NAT rules
+#   1. Stopping hostapd and dnsmasq services
+#   2. Removing firewall/NAT rules
 #   3. Disabling IP forwarding
-#   4. Bringing down the hotspot interface
+#   4. Cleaning up interface configuration
 
-# Load shared functions from common.sh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source "$SCRIPT_DIR/skeleton.sh"
 source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/firewall.sh"
+source "$SCRIPT_DIR/services.sh"
+source "$SCRIPT_DIR/network.sh"
 
-# Detect which interfaces to use
-INTERNET_IF=$(get_internal_interface)  # Interface with internet connection
-HOTSPOT_IF=$(get_external_interface)  # Interface hosting the hotspot
+# =============================================================================
+# MAIN
+# =============================================================================
 
-# Step 1: Stop the services
-# pkill sends SIGTERM to matching processes
-# || true: Don't fail if process doesn't exist
-echo "Stopping services..."
-pkill hostapd || true    # Stop the access point daemon
-pkill dnsmasq || true    # Stop the DHCP/DNS server
+main() {
+    require_root
 
-# Step 2: Remove iptables NAT rules
-# These rules allowed traffic forwarding between interfaces
-# Without them, clients can't access the internet
-echo "Removing iptables rules..."
-# -t nat: Work with NAT table
-# -D POSTROUTING: Delete the masquerading rule (hides client IPs)
-iptables -t nat -D POSTROUTING -o $INTERNET_IF -j MASQUERADE || true
-# -D FORWARD: Delete forwarding rules
-iptables -D FORWARD -i $INTERNET_IF -o $HOTSPOT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT || true
-iptables -D FORWARD -i $HOTSPOT_IF -o $INTERNET_IF -j ACCEPT || true
+    local HOTSPOT_IF=$(get_external_interface)
+    local INTERNET_IF=$(get_internal_interface)
 
-# Step 3: Disable IP forwarding
-# This stops the kernel from forwarding packets between interfaces
-sysctl -w net.ipv4.ip_forward=0
+    log_info "Stopping hotspot services..."
+    
+    log_info "[1/4] Stopping hostapd and dnsmasq..."
+    stop_hotspot_services
 
-# Step 4: Clean up the hotspot interface
-# Flush: Remove all IP addresses from the interface
-# down: Bring the interface down
-ip addr flush dev $HOTSPOT_IF
-ip link set $HOTSPOT_IF down
+    log_info "[2/4] Removing firewall rules..."
+    if [[ -n "$HOTSPOT_IF" ]] && [[ -n "$INTERNET_IF" ]]; then
+        teardown_hotspot_firewall "$INTERNET_IF" "$HOTSPOT_IF"
+    fi
 
-echo "Hotspot stopped."
+    log_info "[3/4] Disabling IP forwarding..."
+    disable_ip_forwarding
+
+    log_info "[4/4] Cleaning up interface..."
+    if [[ -n "$HOTSPOT_IF" ]]; then
+        teardown_hotspot_interface "$HOTSPOT_IF"
+    fi
+
+    log_info "Hotspot stopped."
+}
+
+main "$@"
