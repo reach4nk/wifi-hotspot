@@ -38,6 +38,7 @@ sudo ./stop.sh
 | `start.sh` | Starts the hotspot. Configurable via CLI arguments. |
 | `stop.sh` | Stops hostapd and dnsmasq, removes iptables rules, and cleans up network config. |
 | `monitor.sh` | Shows connected clients, DHCP leases, and ARP table. |
+| `scan.sh` | Scans for WiFi probe requests from devices. Captures SSIDs and client MACs. |
 | `find_interfaces.sh` | Displays detected WiFi interfaces (internal and external). |
 | `teardown.sh` | Removes all hotspot software packages. |
 
@@ -136,6 +137,65 @@ Displays:
 - Connected WiFi stations (MAC address, signal strength, connection time)
 - DHCP leases (IP, MAC, hostname assignments)
 - ARP table for active devices
+
+### Scanning for Probe Requests
+
+```bash
+./scan.sh [OPTIONS]
+```
+
+Captures WiFi probe requests from devices searching for networks. Useful for:
+- Discovering what networks devices are looking for
+- Creating a database of SSIDs for targeted hotspot attacks
+- Analyzing client WiFi behavior
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-i, --interface` | WiFi interface (auto-detect if omitted) |
+| `-d, --duration` | Scan duration in seconds (default: continuous) |
+| `-o, --output` | Output JSON file (default: ./probes.json) |
+| `--cleanup` | Restore managed mode after scan |
+
+#### Examples
+
+```bash
+# Scan for 60 seconds
+./scan.sh -d 60
+
+# Scan with custom output file
+./scan.sh -d 60 -o scan_results.json
+
+# Continuous scan (Ctrl+C to stop)
+./scan.sh
+```
+
+#### Output Format
+
+```json
+{
+  "scan_time": "2026-04-16T10:58:33+01:00",
+  "interface": "wlan0mon",
+  "clients": [
+    {
+      "class": "actual",
+      "mac": "2C:BE:EE:0A:FD:AA",
+      "ssids": ["HV_GT", "Marriott_CONFERENCE", "Marriott_GUEST"]
+    },
+    {
+      "class": "local",
+      "mac": "82:0C:D0:C6:A8:41",
+      "ssids": ["Mariott_STUDIO", "Marriott_LOBBY"]
+    }
+  ]
+}
+```
+
+- `class: "actual"` - Real MAC address
+- `class: "local"` - Randomized MAC address (2nd char of 1st byte is 2, 6, A, or E)
+
+**Note:** The interface remains in monitor mode after scanning for use with start.sh. Use `--cleanup` to restore managed mode.
 
 ### Stopping the Hotspot
 

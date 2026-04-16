@@ -1,0 +1,26 @@
+# Temporary scan files
+probes.json
+*.csv
+*-01.csv
+*-02.csv
+*-03.csv
+*-04.csv
+*-05.csv
+
+# Temp files
+/tmp/wifi_scan_*
+/tmp/wifi_scan_*
+/tmp/probes_*
+/tmp/scan_*
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+*~
+
+# Editor files
+*.swp
+*.swo
+.*.swp
+.*.swo
