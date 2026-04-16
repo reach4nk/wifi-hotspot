@@ -2,28 +2,26 @@
 
 A lightweight WiFi access point solution for Linux. Create a software hotspot to share your internet connection with other devices.
 
-This project provides both a Python package (`src/hotspot/`) and Bash scripts (`scripts/`) for managing WiFi hotspots. The Python version uses only standard library modules with no external dependencies.
+This project provides a Python package (`src/hotspot/`) using only standard library modules with no external dependencies.
 
 ## Requirements
 
 - Linux system with apt (Debian/Ubuntu-based)
-- Python 3.10+ (for Python package)
+- Python 3.10+
 - Two WiFi interfaces:
   - **Internal interface**: Connected to the internet (managed mode)
-  - **External interface**: Dedicated to hosting the hotspot (master mode)
+  - **External interface**: Dedicated to hosting the hotspot (master/monitor mode)
 - Root/sudo privileges
 
 ## System Dependencies
-
-This project relies on the following system tools (installed via `setup.sh` or `setup.py`):
 
 | Tool | Description | License | Repository/Website |
 |------|-------------|---------|-------------------|
 | [hostapd](https://w1.fi/hostapd/) | IEEE 802.11 AP and authentication servers | BSD-3-Clause | [GitHub](https://w1.fi/hostapd/) |
 | [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/) | Lightweight DNS/DHCP server | GPL-2.0 | [GitHub](https://thekelleys.org.uk/dnsmasq/) |
-| [aircrack-ng](https://www.aircrack-ng.org/) | WiFi security auditing suite (airodump-ng) | GPL-2.0 | [GitHub](https://github.com/aircrack-ng/aircrack-ng) |
+| [airodump-ng](https://www.aircrack-ng.org/) | WiFi security auditing suite | GPL-2.0 | [GitHub](https://github.com/aircrack-ng/aircrack-ng) |
 | [iptables](https://www.netfilter.org/projects/iptables/) | Packet filtering and NAT | GPL-2.0 | [Website](https://www.netfilter.org/) |
-| [wireless-tools](https://hewlettpackard.github.io/wireless-tools/) | Linux WiFi configuration (iwconfig, iw) | GPL-2.0 | [GitHub](https://hewlettpackard.github.io/wireless-tools/) |
+| [iw](https://wireless.wiki.kernel.org/en/users/documentation/iw) | Linux WiFi configuration | GPL-2.0 | [Website](https://wireless.wiki.kernel.org/) |
 
 ## Setup and Installation
 
@@ -53,8 +51,8 @@ pip install -e .
 The package is installed in editable mode. To verify:
 
 ```bash
-# Import the library (or use installed package after pip install -e .)
-PYTHONPATH=src python3 -c "from hotspot import HotspotService; print('Library imported successfully')"
+# Import the library
+python3 -c "from hotspot import HotspotService; print('Library imported successfully')"
 ```
 
 ### Build CLI
@@ -65,7 +63,7 @@ After `pip install -e .`, the `hotspot` command is available:
 # Show CLI help
 hotspot --help
 
-# Run commands (may require sudo for system operations)
+# Run commands (requires sudo for system operations)
 hotspot start --ssid MyNetwork
 hotspot stop
 hotspot monitor
@@ -89,66 +87,19 @@ pytest tests/unit/test_config.py -v
 
 ```bash
 # 1. Install dependencies
-sudo ./setup.py
+sudo hotspot setup
 
 # 2. Start the hotspot
-sudo ./start.py
+sudo hotspot start
 
 # 3. Connect devices
 # Use the displayed SSID and password to connect
 
 # 4. Monitor connected clients
-./monitor.py
+hotspot monitor
 
 # 5. Stop the hotspot
-sudo ./stop.py
-```
-
-## Project Structure
-
-```
-wifi-hotspot/
-├── src/hotspot/           # Python package (src layout)
-│   ├── cli/               # CLI commands
-│   ├── core/              # Core utilities (interface, mac, network, firewall)
-│   ├── credentials/       # Credential generation and validation
-│   ├── scanner/           # WiFi probe scanner
-│   ├── services/          # Service management (hostapd, dnsmasq)
-│   └── utils/             # Utilities (logging, config, exceptions)
-├── scripts/               # Bash scripts (legacy)
-├── tests/                 # pytest tests
-│   ├── unit/             # Unit tests
-│   └── fixtures/          # Test fixtures
-├── pyproject.toml         # Python project configuration
-└── README.md
-```
-
-## Usage
-
-### Python Package
-
-```bash
-# Install the package
-pip install -e .
-
-# Run CLI commands
-hotspot start --ssid MyNetwork
-hotspot stop
-hotspot monitor
-hotspot scan -d 60
-```
-
-### Bash Scripts
-
-```bash
-# Install dependencies
-sudo ./scripts/setup.sh
-
-# Start the hotspot
-sudo ./scripts/start.sh --ssid MyNetwork
-
-# Stop the hotspot
-sudo ./scripts/stop.sh
+sudo hotspot stop
 ```
 
 ## Usage
@@ -156,79 +107,75 @@ sudo ./scripts/stop.sh
 ### Starting the Hotspot
 
 ```bash
-sudo ./start.py
-# or
-sudo ./start.sh
+sudo hotspot start
 ```
 
 Output displays the generated SSID and password:
 
 ```
-[1] Configuring interface...
-[2] Writing hostapd config...
-[3] Writing dnsmasq config...
-[4] Enabling IP forwarding...
-[5] Setting iptables rules...
-[6] Starting dnsmasq...
-[7] Starting hostapd...
+INFO: Starting hotspot...
+INFO:   Hotspot interface: wlan1
+INFO:   Internet interface: wlan0
+INFO:   Gateway: 192.168.50.1
+INFO:   SSID: !ColdNet482🛜
+INFO:   Password: WarmLion382#
+INFO:   Encryption: wpa2
+INFO: Hotspot started successfully
 
-Hotspot started.
-SSID: !ColdNet482🛜
-Password: WarmLion382#
-Encryption: wpa2
+Hotspot started successfully.
+  SSID: !ColdNet482🛜
+  Password: WarmLion382#
+  Gateway: 192.168.50.1
 ```
 
 ### Command Line Options
 
 ```bash
-./start.py [OPTIONS]
-# or
-./start.sh [OPTIONS]
+hotspot start [OPTIONS]
 
 OPTIONS:
     -i, --interface <name>       External WiFi interface (auto-detect if omitted)
-    -n, --internet-if <name>     Internet interface (auto-detect if omitted)
-        --ssid <name>            SSID name (random if omitted)
+    -n, --internet-if <name>    Internet interface (auto-detect if omitted)
+        --ssid <name>           SSID name (random if omitted)
         --password <pass>       Password (auto-generate if omitted)
-    -e, --encryption <mode>     Encryption: open|wep|wpa|wpa2 (default: wpa2)
-    -g, --gateway <IP>           Gateway IP (default: 192.168.50.1)
-        --dhcp-start <IP>       DHCP range start (default: 192.168.50.10)
-        --dhcp-end <IP>          DHCP range end (default: 192.168.50.100)
-        --dns <IP>               DNS server (default: 8.8.8.8)
-    -c, --channel <num>          WiFi channel (default: 6)
-    -m, --mode <mode>            WiFi mode: b|g|a|n (default: g)
-    -h, --help                   Show help message
+    -e, --encryption <mode>    Encryption: open|wep|wpa|wpa2 (default: wpa2)
+    -g, --gateway <IP>         Gateway IP (default: 192.168.50.1)
+        --dhcp-start <IP>      DHCP range start (default: 192.168.50.10)
+        --dhcp-end <IP>        DHCP range end (default: 192.168.50.100)
+        --dns <IP>             DNS server (default: 8.8.8.8)
+    -c, --channel <num>         WiFi channel (default: 6)
+    -m, --mode <mode>          WiFi mode: b|g|a|n (default: g)
 ```
 
 ### Examples
 
 ```bash
 # Default (random SSID/password, WPA2)
-sudo ./start.py
+sudo hotspot start
 
 # Custom SSID only
-sudo ./start.py --ssid MyNetwork
+sudo hotspot start --ssid MyNetwork
 
 # Custom SSID and password
-sudo ./start.py --ssid MyNetwork --password SecretPass123!
+sudo hotspot start --ssid MyNetwork --password SecretPass123!
 
 # Open network (no password)
-sudo ./start.py --ssid FreeWiFi --encryption open
+sudo hotspot start --ssid FreeWiFi --encryption open
 
 # WEP encryption (auto-generates key)
-sudo ./start.py --ssid OldDevice --encryption wep
+sudo hotspot start --ssid OldDevice --encryption wep
 
 # WPA encryption (TKIP)
-sudo ./start.py --ssid HomeNet --encryption wpa --password SecurePass456!
+sudo hotspot start --ssid HomeNet --encryption wpa --password SecurePass456!
 
 # Different channel and gateway
-sudo ./start.py --ssid HomeNet -c 11 -g 10.0.0.1
+sudo hotspot start --ssid HomeNet -c 11 -g 10.0.0.1
 
 # Custom DHCP range
-sudo ./start.py --ssid OfficeNet --dhcp-start 10.0.0.50 --dhcp-end 10.0.0.100
+sudo hotspot start --ssid OfficeNet --dhcp-start 10.0.0.50 --dhcp-end 10.0.0.100
 
 # Custom DNS server
-sudo ./start.py --ssid HomeNet --dns 1.1.1.1
+sudo hotspot start --ssid HomeNet --dns 1.1.1.1
 ```
 
 ### Encryption Modes
@@ -243,20 +190,18 @@ sudo ./start.py --ssid HomeNet --dns 1.1.1.1
 ### Monitoring Connected Clients
 
 ```bash
-./monitor.py
-# or
-./monitor.sh
+hotspot monitor
 ```
 
 Displays:
-- Connected WiFi stations (MAC address, signal strength, connection time)
+- Connected WiFi stations (MAC addresses)
 - DHCP leases (IP, MAC, hostname assignments)
 - ARP table for active devices
 
 ### Scanning for Probe Requests
 
 ```bash
-python3 ./scan.py [OPTIONS]
+hotspot scan [OPTIONS]
 ```
 
 Captures WiFi probe requests from devices searching for networks. Features:
@@ -266,8 +211,8 @@ Captures WiFi probe requests from devices searching for networks. Features:
 
 Useful for:
 - Discovering what networks devices are looking for
-- Creating a database of SSIDs for targeted hotspot attacks
 - Analyzing client WiFi behavior
+- Creating a database of SSIDs for targeted hotspot attacks
 
 #### Options
 
@@ -282,20 +227,20 @@ Useful for:
 
 ```bash
 # Scan for 60 seconds
-python3 ./scan.py -d 60
+hotspot scan -d 60
 
 # Scan with custom output file
-python3 ./scan.py -d 60 -o scan_results.json
+hotspot scan -d 60 -o scan_results.json
 
 # Continuous scan (Ctrl+C to stop)
-python3 ./scan.py
+hotspot scan
 ```
 
 #### Output Format
 
 ```json
 {
-  "interface": "wlxf4f26d1c2b2b",
+  "interface": "wlan1",
   "clients": [
     {
       "class": "actual",
@@ -314,44 +259,57 @@ python3 ./scan.py
 - `class: "actual"` - Real MAC address
 - `class: "local"` - Randomized MAC address (2nd char of 1st byte is 2, 6, A, or E)
 
-**Note:** The interface remains in monitor mode after scanning for use with `start.sh`. Use `--cleanup` to restore managed mode.
-
-#### Deprecated: scan.sh
-
-The legacy `scan.sh` is deprecated. Use `scan.py` instead for:
-- Better real-time CSV monitoring
-- Proper JSON merging with deduplication
-- Cleaner Python-based parsing
-
-### Stopping the Hotspot
-
-```bash
-sudo ./stop.py
-# or
-sudo ./stop.sh
-```
-
-Gracefully stops services and removes network configuration.
+**Note:** The interface remains in monitor mode after scanning. Use `--cleanup` to restore managed mode.
 
 ### Finding Interfaces
 
 ```bash
-./find_interfaces.py
-# or
-./find_interfaces.sh
+hotspot find-interfaces
 ```
 
 Displays detected internal (internet-connected) and external (hotspot) interfaces.
 
+### Stopping the Hotspot
+
+```bash
+sudo hotspot stop
+```
+
+Gracefully stops services and removes network configuration.
+
+### Installing Software
+
+```bash
+sudo hotspot setup
+```
+
+Installs hostapd, dnsmasq, and iptables.
+
 ### Removing Software
 
 ```bash
-sudo ./teardown.py
-# or
-sudo ./teardown.sh
+sudo hotspot teardown
 ```
 
 Removes hostapd and dnsmasq packages and cleans up dependencies.
+
+## Project Structure
+
+```
+wifi-hotspot/
+├── src/hotspot/           # Python package (src layout)
+│   ├── cli/               # CLI commands (start, stop, monitor, scan, setup, teardown)
+│   ├── core/               # Core utilities (interface, mac, network, firewall, process)
+│   ├── credentials/        # Credential generation and validation
+│   ├── scanner/            # WiFi probe scanner (airodump-ng integration)
+│   ├── services/           # Service management (hostapd, dnsmasq, hotspot)
+│   └── utils/              # Utilities (logging, config, exceptions)
+├── scripts/                # Legacy Bash scripts
+├── tests/                  # pytest tests
+│   └── unit/               # Unit tests with mocks
+├── pyproject.toml          # Python project configuration
+└── README.md
+```
 
 ## Configuration
 
@@ -382,13 +340,13 @@ Removes hostapd and dnsmasq packages and cleans up dependencies.
 
 ### "No internet interface found"
 - Ensure your internal WiFi interface is connected to a network
-- Check that `iwconfig` shows an interface in Managed mode
-- Manually specify: `--internet-if wlan0`
+- Check that `iw dev` shows an interface in Managed mode
+- Manually specify: `hotspot start --internet-if wlan0`
 
 ### "No external interface found"
-- Ensure you have a second WiFi interface capable of master mode
+- Ensure you have a second WiFi interface capable of master/monitor mode
 - Some adapters do not support AP mode
-- Manually specify: `--interface wlan1`
+- Manually specify: `hotspot start --interface wlan1`
 
 ### "hostapd failed to start"
 - Check that no other hostapd process is running: `pkill hostapd`
@@ -405,35 +363,20 @@ Removes hostapd and dnsmasq packages and cleans up dependencies.
 
 ## How It Works
 
-### Hotspot (start.sh)
-1. **Interface Detection**: Uses `iwconfig` to identify WiFi interfaces by mode (Managed vs Master)
+### Hotspot (start)
+1. **Interface Detection**: Uses `iw` to identify WiFi interfaces by mode (Managed vs Master/Monitor)
 2. **Network Setup**: Assigns static IP to the external interface (default: 192.168.50.1/24)
 3. **SSID/Password Generation**: Randomly generates memorable network credentials (or uses provided values)
 4. **DHCP Server**: dnsmasq assigns IPs to connected clients (configurable range)
 5. **NAT Routing**: iptables masquerades traffic from hotspot clients to the internet
 6. **Access Point**: hostapd broadcasts the WiFi network and handles authentication
 
-### Probe Scanning (scan.py)
+### Probe Scanning (scan)
 1. **Monitor Mode**: Puts interface in monitor mode to capture all WiFi frames
 2. **airodump-ng**: Captures probe request frames from nearby clients
-3. **Real-time Parsing**: Python monitors CSV output and updates JSON immediately
+3. **Real-time Parsing**: Monitors CSV output and updates JSON immediately
 4. **MAC Deduplication**: Merges results by MAC address, accumulating all probed SSIDs
 5. **Persistent Storage**: Results saved to `probes.json` and updated in real-time
-
-### Architecture
-
-The project uses a modular design with library + CLI separation:
-
-**Python Package (`src/hotspot/`):**
-- `hotspot.core`: Core utilities (interface detection, MAC classification, process management, network, firewall)
-- `hotspot.credentials`: SSID/password generation and validation
-- `hotspot.services`: hostapd/dnsmasq lifecycle management
-- `hotspot.scanner`: WiFi probe request scanning
-- `hotspot.cli`: Command-line interface commands
-- `hotspot.utils`: Logging, configuration, exceptions
-
-**Bash Scripts (`scripts/`):**
-- Same module structure with equivalent functionality in Bash
 
 ## Development
 
@@ -452,4 +395,12 @@ pytest tests/ --cov=src/hotspot --cov-report=term-missing
 
 ### Code Quality
 
-The project follows Python best practices and includes ruff configuration in `pyproject.toml`.
+The project follows Python best practices:
+- OOP design with separation of concerns
+- Type hints throughout
+- ruff/pylint configuration in `pyproject.toml`
+- 94%+ test coverage
+
+## License
+
+See project license file.
