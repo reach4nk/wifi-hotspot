@@ -1,4 +1,74 @@
-# Temporary scan files
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Project specific
 probes.json
 *.csv
 *-01.csv
@@ -6,24 +76,14 @@ probes.json
 *-03.csv
 *-04.csv
 *-05.csv
-
-# Temp files
-/tmp/wifi_scan_*
+*.tmp
 /tmp/wifi_scan_*
 /tmp/probes_*
 /tmp/scan_*
-*.tmp
+/tmp/hostapd.conf
+/tmp/dnsmasq.conf
 
-# OS files
-.DS_Store
-Thumbs.db
-*~
-
-# Editor files
-*.swp
-*.swo
-.*.swp
-.*.swo
-
-__pycache__/
-*.pyc
+# Test fixtures
+tests/fixtures/input/
+tests/fixtures/output/
+!tests/fixtures/.gitkeep

@@ -1,18 +1,21 @@
 # WiFi Hotspot
 
-A lightweight Bash-based WiFi access point solution for Linux. Create a software hotspot to share your internet connection with other devices.
+A lightweight WiFi access point solution for Linux. Create a software hotspot to share your internet connection with other devices.
+
+This project provides both a Python package (`src/hotspot/`) and Bash scripts (`scripts/`) for managing WiFi hotspots. The Python version uses only standard library modules with no external dependencies.
 
 ## Requirements
 
 - Linux system with apt (Debian/Ubuntu-based)
+- Python 3.10+ (for Python package)
 - Two WiFi interfaces:
   - **Internal interface**: Connected to the internet (managed mode)
   - **External interface**: Dedicated to hosting the hotspot (master mode)
 - Root/sudo privileges
 
-## Third-Party Dependencies
+## System Dependencies
 
-This project relies on the following excellent open-source tools:
+This project relies on the following system tools (installed via `setup.sh` or `setup.py`):
 
 | Tool | Description | License | Repository/Website |
 |------|-------------|---------|-------------------|
@@ -22,51 +25,139 @@ This project relies on the following excellent open-source tools:
 | [iptables](https://www.netfilter.org/projects/iptables/) | Packet filtering and NAT | GPL-2.0 | [Website](https://www.netfilter.org/) |
 | [wireless-tools](https://hewlettpackard.github.io/wireless-tools/) | Linux WiFi configuration (iwconfig, iw) | GPL-2.0 | [GitHub](https://hewlettpackard.github.io/wireless-tools/) |
 
-These tools are installed automatically by `./setup.sh`.
+## Setup and Installation
+
+### Download
+
+```bash
+git clone <repository-url>
+cd wifi-hotspot
+```
+
+### Python Setup
+
+```bash
+# Create virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install the package with dev dependencies
+pip install -e ".[dev]"
+
+# Or install without dev dependencies
+pip install -e .
+```
+
+### Build Library
+
+The package is installed in editable mode. To verify:
+
+```bash
+# Import the library (or use installed package after pip install -e .)
+PYTHONPATH=src python3 -c "from hotspot import HotspotService; print('Library imported successfully')"
+```
+
+### Build CLI
+
+After `pip install -e .`, the `hotspot` command is available:
+
+```bash
+# Show CLI help
+hotspot --help
+
+# Run commands (may require sudo for system operations)
+hotspot start --ssid MyNetwork
+hotspot stop
+hotspot monitor
+hotspot scan -d 60
+```
+
+### Run Tests
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run with coverage report
+pytest tests/ --cov=src/hotspot --cov-report=term-missing
+
+# Run specific test file
+pytest tests/unit/test_config.py -v
+```
 
 ## Quick Start
 
 ```bash
 # 1. Install dependencies
-sudo ./setup.sh
+sudo ./setup.py
 
 # 2. Start the hotspot
-sudo ./start.sh
+sudo ./start.py
 
 # 3. Connect devices
 # Use the displayed SSID and password to connect
 
 # 4. Monitor connected clients
-./monitor.sh
+./monitor.py
 
 # 5. Stop the hotspot
-sudo ./stop.sh
+sudo ./stop.py
 ```
 
-## Scripts
+## Project Structure
 
-| Script | Description |
-|--------|-------------|
-| `common.sh` | Shared library with interface detection, MAC utilities, process management. |
-| `skeleton.sh` | Base script template with logging, cleanup, and privilege checking. |
-| `credentials.sh` | Credential generation utilities (SSID, passwords, WEP keys). |
-| `network.sh` | Network interface configuration (monitor mode, hotspot setup). |
-| `firewall.sh` | iptables/NAT management utilities. |
-| `services.sh` | hostapd/dnsmasq lifecycle management. |
-| `setup.sh` | Installs hostapd, dnsmasq, and iptables. Stops services to prevent conflicts. |
-| `start.sh` | Starts the hotspot. Configurable via CLI arguments. |
-| `stop.sh` | Stops hostapd and dnsmasq, removes iptables rules, and cleans up network config. |
-| `monitor.sh` | Shows connected clients, DHCP leases, and ARP table. |
-| `scan.py` | **Scans for WiFi probe requests** (Python, real-time updates, JSON merging). |
-| `scan.sh` | **DEPRECATED** - Legacy bash version. Use `scan.py` instead. |
-| `find_interfaces.sh` | Displays detected WiFi interfaces (internal and external). |
-| `teardown.sh` | Removes all hotspot software packages. |
+```
+wifi-hotspot/
+├── src/hotspot/           # Python package (src layout)
+│   ├── cli/               # CLI commands
+│   ├── core/              # Core utilities (interface, mac, network, firewall)
+│   ├── credentials/       # Credential generation and validation
+│   ├── scanner/           # WiFi probe scanner
+│   ├── services/          # Service management (hostapd, dnsmasq)
+│   └── utils/             # Utilities (logging, config, exceptions)
+├── scripts/               # Bash scripts (legacy)
+├── tests/                 # pytest tests
+│   ├── unit/             # Unit tests
+│   └── fixtures/          # Test fixtures
+├── pyproject.toml         # Python project configuration
+└── README.md
+```
+
+## Usage
+
+### Python Package
+
+```bash
+# Install the package
+pip install -e .
+
+# Run CLI commands
+hotspot start --ssid MyNetwork
+hotspot stop
+hotspot monitor
+hotspot scan -d 60
+```
+
+### Bash Scripts
+
+```bash
+# Install dependencies
+sudo ./scripts/setup.sh
+
+# Start the hotspot
+sudo ./scripts/start.sh --ssid MyNetwork
+
+# Stop the hotspot
+sudo ./scripts/stop.sh
+```
 
 ## Usage
 
 ### Starting the Hotspot
 
 ```bash
+sudo ./start.py
+# or
 sudo ./start.sh
 ```
 
@@ -90,6 +181,8 @@ Encryption: wpa2
 ### Command Line Options
 
 ```bash
+./start.py [OPTIONS]
+# or
 ./start.sh [OPTIONS]
 
 OPTIONS:
@@ -111,31 +204,31 @@ OPTIONS:
 
 ```bash
 # Default (random SSID/password, WPA2)
-sudo ./start.sh
+sudo ./start.py
 
 # Custom SSID only
-sudo ./start.sh --ssid MyNetwork
+sudo ./start.py --ssid MyNetwork
 
 # Custom SSID and password
-sudo ./start.sh --ssid MyNetwork --password SecretPass123!
+sudo ./start.py --ssid MyNetwork --password SecretPass123!
 
 # Open network (no password)
-sudo ./start.sh --ssid FreeWiFi --encryption open
+sudo ./start.py --ssid FreeWiFi --encryption open
 
 # WEP encryption (auto-generates key)
-sudo ./start.sh --ssid OldDevice --encryption wep
+sudo ./start.py --ssid OldDevice --encryption wep
 
 # WPA encryption (TKIP)
-sudo ./start.sh --ssid HomeNet --encryption wpa --password SecurePass456!
+sudo ./start.py --ssid HomeNet --encryption wpa --password SecurePass456!
 
 # Different channel and gateway
-sudo ./start.sh --ssid HomeNet -c 11 -g 10.0.0.1
+sudo ./start.py --ssid HomeNet -c 11 -g 10.0.0.1
 
 # Custom DHCP range
-sudo ./start.sh --ssid OfficeNet --dhcp-start 10.0.0.50 --dhcp-end 10.0.0.100
+sudo ./start.py --ssid OfficeNet --dhcp-start 10.0.0.50 --dhcp-end 10.0.0.100
 
 # Custom DNS server
-sudo ./start.sh --ssid HomeNet --dns 1.1.1.1
+sudo ./start.py --ssid HomeNet --dns 1.1.1.1
 ```
 
 ### Encryption Modes
@@ -150,6 +243,8 @@ sudo ./start.sh --ssid HomeNet --dns 1.1.1.1
 ### Monitoring Connected Clients
 
 ```bash
+./monitor.py
+# or
 ./monitor.sh
 ```
 
@@ -231,6 +326,8 @@ The legacy `scan.sh` is deprecated. Use `scan.py` instead for:
 ### Stopping the Hotspot
 
 ```bash
+sudo ./stop.py
+# or
 sudo ./stop.sh
 ```
 
@@ -239,6 +336,8 @@ Gracefully stops services and removes network configuration.
 ### Finding Interfaces
 
 ```bash
+./find_interfaces.py
+# or
 ./find_interfaces.sh
 ```
 
@@ -247,6 +346,8 @@ Displays detected internal (internet-connected) and external (hotspot) interface
 ### Removing Software
 
 ```bash
+sudo ./teardown.py
+# or
 sudo ./teardown.sh
 ```
 
@@ -321,10 +422,34 @@ Removes hostapd and dnsmasq packages and cleans up dependencies.
 
 ### Architecture
 
-The project uses a modular design with shared libraries:
-- `skeleton.sh`: Base template with logging, cleanup, privilege checking
-- `common.sh`: Core utilities (interface detection, MAC classification, process management)
-- `network.sh`: Interface configuration (monitor mode, hotspot setup)
-- `firewall.sh`: iptables/NAT management
-- `services.sh`: hostapd/dnsmasq lifecycle
-- `credentials.sh`: SSID/password generation and validation
+The project uses a modular design with library + CLI separation:
+
+**Python Package (`src/hotspot/`):**
+- `hotspot.core`: Core utilities (interface detection, MAC classification, process management, network, firewall)
+- `hotspot.credentials`: SSID/password generation and validation
+- `hotspot.services`: hostapd/dnsmasq lifecycle management
+- `hotspot.scanner`: WiFi probe request scanning
+- `hotspot.cli`: Command-line interface commands
+- `hotspot.utils`: Logging, configuration, exceptions
+
+**Bash Scripts (`scripts/`):**
+- Same module structure with equivalent functionality in Bash
+
+## Development
+
+### Running Tests
+
+```bash
+# Install dev dependencies (already included with pip install -e ".[dev]")
+pip install -e ".[dev]"
+
+# Run all tests
+pytest tests/
+
+# Run with coverage
+pytest tests/ --cov=src/hotspot --cov-report=term-missing
+```
+
+### Code Quality
+
+The project follows Python best practices and includes ruff configuration in `pyproject.toml`.
